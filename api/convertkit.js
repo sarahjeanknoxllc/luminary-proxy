@@ -12,8 +12,6 @@ export default async function handler(req, res) {
   }
 
   let body = req.body;
-
-  // Parse body if it came in as a string
   if (typeof body === 'string') {
     try { body = JSON.parse(body); } catch(e) { body = {}; }
   }
@@ -27,8 +25,9 @@ export default async function handler(req, res) {
   const API_KEY = 'Y_uWU-aoES_X4KkSu-ICtw';
 
   try {
-    // Step 1 — Subscribe the user
-    const subResponse = await fetch('https://api.convertkit.com/v3/subscribers', {
+    // Step 1 — Tag the subscriber directly using the tag subscribe endpoint
+    // This creates the subscriber AND applies the tag in one call
+    const tagResponse = await fetch(`https://api.convertkit.com/v3/tags/${tag_id}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -38,22 +37,14 @@ export default async function handler(req, res) {
       })
     });
 
-    const subData = await subResponse.json();
-    const subscriberId = subData?.subscriber?.id;
+    const tagData = await tagResponse.json();
+    console.log('Tag subscribe response:', JSON.stringify(tagData));
 
-    // Step 2 — Apply the tag
-    if (subscriberId && tag_id) {
-      await fetch(`https://api.convertkit.com/v3/tags/${tag_id}/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key: API_KEY,
-          email:   email
-        })
-      });
+    if (!tagResponse.ok) {
+      return res.status(tagResponse.status).json({ error: tagData });
     }
 
-    return res.status(200).json({ success: true, subscriber_id: subscriberId });
+    return res.status(200).json({ success: true, data: tagData });
 
   } catch (err) {
     console.error('ConvertKit error:', err);
