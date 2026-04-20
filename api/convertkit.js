@@ -11,7 +11,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, first_name, tag_id } = req.body;
+  let body = req.body;
+
+  // Parse body if it came in as a string
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch(e) { body = {}; }
+  }
+
+  const { email, first_name, tag_id } = body || {};
 
   if (!email || !first_name) {
     return res.status(400).json({ error: 'Email and first name are required' });
@@ -34,7 +41,7 @@ export default async function handler(req, res) {
     const subData = await subResponse.json();
     const subscriberId = subData?.subscriber?.id;
 
-    // Step 2 — Apply the tag if we have a subscriber ID and tag ID
+    // Step 2 — Apply the tag
     if (subscriberId && tag_id) {
       await fetch(`https://api.convertkit.com/v3/tags/${tag_id}/subscribe`, {
         method: 'POST',
@@ -46,10 +53,10 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, subscriber_id: subscriberId });
 
   } catch (err) {
     console.error('ConvertKit error:', err);
-    return res.status(500).json({ error: 'Subscription failed' });
+    return res.status(500).json({ error: err.message });
   }
 }
